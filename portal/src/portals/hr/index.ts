@@ -1,8 +1,8 @@
 // src/portals/hr/index.ts
-import React, { lazy } from "react";
-import { PortalModule } from "@shared/types/portal.types";
-import { PERMISSIONS } from "@constants/permissions";
-import { ROLES } from "@constants/roles";
+import { lazy } from "react";
+import { PERMISSIONS } from "../../shared/constants/permissions";
+import { ROLES } from "../../shared/constants/roles";
+import { PortalModule } from "../../shared/types/portal.types";
 import { HRLayout } from "./layouts/HRLayout";
 
 const HRDashboard = lazy(() => import("./pages/HRDashboard"));
