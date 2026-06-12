@@ -24,14 +24,9 @@ export function Loader({ isText = true }: LoaderProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
-      <div
-        className={`inline-flex items-center gap-4 rounded-2xl border border-border/40 bg-primary p-2 shadow-xl`}
-      >
-        <div className="relative flex items-center justify-center">
-          <Spinner className="size-5 text-background" />
-        </div>
-
+    <div className="inline-flex items-center gap-2">
+      <div className="relative flex h-4 w-4 items-center justify-center">
+        <Spinner className="size-4" />
       </div>
     </div>
   )

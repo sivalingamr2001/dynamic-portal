@@ -1,25 +1,25 @@
-import useSessionStorage from "@/hooks/useSessionStorage"
 import { useEffect } from "react"
 import { Outlet, useNavigate } from "react-router-dom"
+import { useAuth } from "@/context/AuthContext"
+import { Loader } from "@/components/Loader"
 
 export const ProtectedLayout = () => {
-    const { get } = useSessionStorage()
-    const isAuthenticated = get("isAuthenticated") === "true"
+    const { isAuthenticated, isLoading } = useAuth()
     const navigate = useNavigate()
 
     useEffect(() => {
-        if (!isAuthenticated) {
-            navigate("/login")
+        if (!isLoading && !isAuthenticated) {
+            navigate("/login", { replace: true })
         }
-    }, [isAuthenticated])
+    }, [isAuthenticated, isLoading, navigate])
 
-    return (
-        <div>
-            {isAuthenticated ? (
-                <Outlet />
-            ) : (
-                <div>Please log in to access this page.</div>
-            )}
-        </div>
-    )
+    if (isLoading) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center bg-background">
+                <Loader isText={true} />
+            </div>
+        )
+    }
+
+    return isAuthenticated ? <Outlet /> : null
 }
