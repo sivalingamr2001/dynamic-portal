@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import * as Icons from 'lucide-react'
 import { cn } from '../lib/utils'
-import { portalConfig, type UserRole } from '@/config/portalConfig'
+import type { UserRole } from '@/config/portalConfig.types'
+import { usePortalConfig } from '@/context/PortalConfigContext'
 
 const MobileBottomNav: React.FC = () => {
   const { currentUserRole } = useAuth()
@@ -11,7 +12,9 @@ const MobileBottomNav: React.FC = () => {
 
   const currentRole: UserRole = (currentUserRole as UserRole) || 'sales_rep'
 
-  const filteredNavigation = portalConfig.navigation.primary.filter((item) =>
+  const { config } = usePortalConfig()
+
+  const filteredNavigation = config.navigation.primary.filter((item) =>
     (item.roles as readonly string[]).includes(currentRole),
   )
 

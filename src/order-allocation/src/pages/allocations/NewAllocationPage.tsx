@@ -1,35 +1,191 @@
-import { DynamicGrid, type GridActionItem } from "@/components/DynamicGrid/Index";
-import { binApprovalColumns } from "./columns";
-import { Check } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import type { GridApi, ColDef, IRowNode } from "ag-grid-community";
+import { Download, Mail, Plus, Trash2, User } from "lucide-react";
+import { DynamicGrid, IconCellRenderer, LinkCellRenderer, StatusBadgeCellRenderer, type BulkAction, type GridActionItem, type InfiniteDataSource } from "@/components/DynamicGrid/Index";
 
-const mockApprovalData = Array.from({ length: 20 }).map((_, idx) => {
-  const items = [
-    { itemCode: "RES-010K", itemName: "Resistor 10K Ω 1%", customer: "ABC Electroni...", region: "Maharashtra", binQty: 10000, approvedQty: 10000, targetDate: "2026-12-10", status: "Approved" },
-    { itemCode: "PCB-001", itemName: "PCB Assembly Rev3", customer: "ABC Electroni...", region: "Maharashtra", binQty: 500, approvedQty: 480, targetDate: "2026-12-15", status: "Approved" },
-    { itemCode: "PWR-24V", itemName: "Power Supply 24V 5A", customer: "Delta Manufa...", region: "Tamil Nadu", binQty: 50, approvedQty: 45, targetDate: "2026-12-18", status: "Approved" },
-    { itemCode: "REL-12V", itemName: "Relay 12V SPDT 10A", customer: "Omega Syste...", region: "Karnataka", binQty: 300, approvedQty: 300, targetDate: "2026-12-28", status: "Pending" },
-    { itemCode: "PRS-SNS", itemName: "Pressure Sensor 0-10 Bar", customer: "ABC Electroni...", region: "Maharashtra", binQty: 60, approvedQty: 40, targetDate: "2026-01-25", status: "Amend" }
-  ];
-  return { ...items[idx % items.length] };
-});
+interface EmployeeRow {
+    [key: string]: unknown;
+    id: number;
+    name: string;
+    email: string;
+    department: string;
+    role: string;
+    status: string;
+    joinDate: string;
+    salary: number;
+}
+
+const EMPLOYEES: EmployeeRow[] = Array.from({ length: 500 }, (_, index) => ({
+    id: index + 1,
+    name: `Employee ${index + 1}`,
+    email: `employee${index + 1}@company.com`,
+    department: ["Engineering", "HR", "Finance", "Sales"][index % 4],
+    role: ["Developer", "Manager", "Analyst", "Lead"][index % 4],
+    status: index % 2 === 0 ? "Active" : "Inactive",
+    joinDate: "2025-01-01",
+    salary: 500000 + index * 1000,
+}));
+
+async function fetchEmployeePage(
+    startRow: number,
+    endRow: number,
+    searchTerm?: string
+) {
+    let data = EMPLOYEES;
+
+    if (searchTerm?.trim()) {
+        const search = searchTerm.toLowerCase();
+
+        data = data.filter(
+            (x) =>
+                x.name.toLowerCase().includes(search) ||
+                x.email.toLowerCase().includes(search) ||
+                x.department.toLowerCase().includes(search)
+        );
+    }
+
+    return {
+        rows: data.slice(startRow, endRow),
+        lastRow: data.length,
+    };
+}
 
 export const NewAllocationPage = () => {
-  const batchActions: GridActionItem[] = [
-    {
-        label: "Approve All (8)",
-        onClick: (api) => console.log("Batch processing launched.", api),
-        icon: <Check className="h-3 w-3" />,
-        variant: "primary"
-    }
-  ];
+    const [lastAction, setLastAction] = useState("");
 
-  return (
-    <div className="w-full h-full flex flex-col min-h-0">
-      <DynamicGrid 
-        rowData={mockApprovalData}
-        colDefs={binApprovalColumns}
-        customActions={batchActions}
-      />
-    </div>
-  );
+    const handleNavigate = useCallback((row: EmployeeRow) => {
+        setLastAction(`Opened: ${row.name} (ID ${row.id})`);
+    }, []);
+
+    const colDefs = useMemo<ColDef<EmployeeRow>[]>(() => [
+        {
+            headerName: "Name",
+            field: "name",
+            minWidth: 160,
+            cellRenderer: LinkCellRenderer,
+            valueGetter: (p) => ({
+                label: p.data?.name ?? "",
+                onClick: (node: IRowNode) =>
+                    handleNavigate(node.data as EmployeeRow),
+            }),
+        },
+        {
+            headerName: "Email",
+            field: "email",
+            minWidth: 200,
+            cellRenderer: IconCellRenderer,
+            valueGetter: (p) => ({
+                icon: <Mail className="h-3 w-3" />,
+                text: p.data?.email ?? "",
+            }),
+        },
+        {
+            headerName: "Department",
+            field: "department",
+            minWidth: 160,
+            cellRenderer: IconCellRenderer,
+            valueGetter: (p) => ({
+                icon: <User className="h-3 w-3" />,
+                text: p.data?.department ?? "",
+            }),
+        },
+        {
+            headerName: "Role",
+            field: "role",
+            minWidth: 120,
+        },
+        {
+            headerName: "Status",
+            field: "status",
+            minWidth: 120,
+            cellRenderer: StatusBadgeCellRenderer,
+        },
+        {
+            headerName: "Join Date",
+            field: "joinDate",
+            minWidth: 130,
+        },
+        {
+            headerName: "Salary (₹)",
+            field: "salary",
+            minWidth: 140,
+            valueFormatter: (p) =>
+                p.value != null
+                    ? new Intl.NumberFormat("en-IN", {
+                          style: "currency",
+                          currency: "INR",
+                          maximumFractionDigits: 0,
+                      }).format(p.value)
+                    : "",
+        },
+    ], [handleNavigate]);
+
+    const customActions = useMemo<GridActionItem[]>(() => [
+        {
+            label: "Add Employee",
+            icon: <Plus className="h-3 w-3" />,
+            variant: "primary",
+            onClick: () => setLastAction("Add Employee clicked"),
+        },
+        {
+            label: "Export CSV",
+            icon: <Download className="h-3 w-3" />,
+            variant: "secondary",
+            onClick: (api: GridApi | null) => {
+                api?.exportDataAsCsv({
+                    fileName: "employees.csv",
+                });
+                setLastAction("CSV export triggered");
+            },
+        },
+    ], []);
+
+    const bulkActions = useMemo<BulkAction<EmployeeRow>[]>(() => [
+        {
+            label: "Delete Selected",
+            icon: <Trash2 className="h-3 w-3" />,
+            variant: "danger",
+            onClick: (rows) =>
+                setLastAction(
+                    `Delete: ${rows.map((r) => r.name).join(", ")}`
+                ),
+        },
+        {
+            label: "Export Selected",
+            icon: <Download className="h-3 w-3" />,
+            variant: "secondary",
+            onClick: (rows, api) => {
+                api?.exportDataAsCsv({
+                    onlySelected: true,
+                    fileName: "selected.csv",
+                });
+                setLastAction(`Exported ${rows.length} rows`);
+            },
+        },
+    ], []);
+
+    const infiniteSource = useMemo<InfiniteDataSource<EmployeeRow>>(
+        () => ({
+            pageSize: 50,
+            fetchPage: ({ startRow, endRow, searchTerm }) =>
+                fetchEmployeePage(startRow, endRow, searchTerm),
+        }),
+        []
+    );
+
+    return (
+        <div className="flex flex-col gap-4 h-screen">
+            <div className="flex-1 min-h-0">
+                <DynamicGrid<EmployeeRow>
+                    infiniteSource={infiniteSource}
+                    colDefs={colDefs}
+                    rowSelection="multiple"
+                    customActions={customActions}
+                    bulkActions={bulkActions}
+                    pageSize={50}
+                    showPagination={true}
+                />
+            </div>
+        </div>
+    );
 };

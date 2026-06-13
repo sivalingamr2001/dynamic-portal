@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import * as Icons from 'lucide-react'
 
 import Logo, { cn } from "@/lib/utils"
-import portalConfig from "@/config/portalConfig"
+import { usePortalConfig } from "@/context/PortalConfigContext"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 type IconKey = keyof typeof Icons;
@@ -14,7 +14,8 @@ export const AppSidebar = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const location = useLocation()
   const isMobile = typeof window !== "undefined" ? window.matchMedia("(max-width: 767px)").matches : false
-  const { app, navigation } = portalConfig
+  const { config } = usePortalConfig()
+  const { app, navigation } = config
 
   return (
     // FIXED: Removed "hidden lg:flex" so the elements render inside your mobile drawer wrapper
@@ -96,7 +97,7 @@ export const AppSidebar = () => {
       <div className="mt-auto pt-2.5 border-t border-border bg-card">
         <div className="flex items-center gap-2 pl-1">
           <Avatar className="w-7 h-7 ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/40">
-            <AvatarImage src="/profile.jpg" alt="Jessin Sam" />
+            <AvatarImage src="" alt="Jessin Sam" />
             <AvatarFallback className="text-xs">JS</AvatarFallback>
           </Avatar>
           <div className="text-xs leading-tight">

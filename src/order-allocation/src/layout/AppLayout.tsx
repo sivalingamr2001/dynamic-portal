@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Outlet, useLocation } from "react-router-dom"
 import { AppHeader } from "./AppHeader"
 import { AppSidebar } from "./AppSidebar"
-import portalConfig from "@/config/portalConfig"
+import { usePortalConfig } from "@/context/PortalConfigContext"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
 export const AppLayout = () => {
@@ -13,7 +13,9 @@ export const AppLayout = () => {
     setIsMobileOpen(false)
   }, [location.pathname])
 
-  const activeRoute = portalConfig.navigation.primary.find((item) => {
+  const { config } = usePortalConfig()
+
+  const activeRoute = config.navigation.primary.find((item) => {
     const currentPath = location.pathname.replace(/^\/|\/$/g, '')
     const cleanItemPath = item.path.replace(/^\/|\/$/g, '')
     return currentPath === cleanItemPath

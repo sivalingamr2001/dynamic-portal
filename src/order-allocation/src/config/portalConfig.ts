@@ -1,7 +1,17 @@
-export type UserRole = "Admin" | "Hod" | "User"
-export type AllocationBasis = "customer_specific" | "item_specific"
+import type { PortalConfig } from "./portalConfig.types"
 
-export const portalConfig = {
+export type {
+  AllocationBasis,
+  FormFieldConfig,
+  NavItem,
+  PortalConfig,
+  RoleConfig,
+  StatusConfig,
+  TableColumn,
+  UserRole,
+} from "./portalConfig.types"
+
+export const defaultPortalConfig: PortalConfig = {
   // Application metadata
   app: {
     name: "BIN Portal - Sales",
@@ -388,6 +398,9 @@ export const portalConfig = {
     { value: "pricing_issue", label: "Pricing Issue" },
     { value: "other", label: "Other" },
   ],
-} as const
+}
 
-export default portalConfig
+/** @deprecated Use `defaultPortalConfig` or `usePortalConfig()` instead */
+export const portalConfig = defaultPortalConfig
+
+export default defaultPortalConfig
