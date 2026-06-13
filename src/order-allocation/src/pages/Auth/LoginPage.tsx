@@ -17,8 +17,8 @@ export const LoginPage: React.FC = () => {
     const { loading, withLoader } = useLoader()
     const navigate = useNavigate()
 
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
+    const [username, setUsername] = useState('MUM25225')
+    const [password, setPassword] = useState('MAR7')
     const [localError, setLocalError] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +27,7 @@ export const LoginPage: React.FC = () => {
 
         try {
             await withLoader(async () => {
-                await login(email, password)
+                await login(username, password)
             })
             navigate('/dashboard')
         } catch (err) {
@@ -69,17 +69,17 @@ export const LoginPage: React.FC = () => {
                             </Alert>
                         )}
 
-                        {/* Email form controller segment */}
+                        {/* username form controller segment */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="email" className="text-xs font-semibold tracking-wide text-foreground/80">
-                                Email address
+                            <Label htmlFor="username" className="text-xs font-semibold tracking-wide text-foreground/80">
+                                username address
                             </Label>
                             <Input
-                                id="email"
-                                type="email"
-                                value={email}
+                                id="username"
+                                type="username"
+                                value={username}
                                 disabled={loading}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => setUsername(e.target.value)}
                                 placeholder="name@company.com"
                                 className="h-11 border-input bg-background text-foreground focus-visible:ring-ring rounded-xl transition-all w-full"
                                 required
