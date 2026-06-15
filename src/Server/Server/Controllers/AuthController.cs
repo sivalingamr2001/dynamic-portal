@@ -1,42 +1,29 @@
-using Application.Shared;
-using Backend.DB;
-using Backend.Models;
-using Dapper;
+using Backend.Dto;
+using Backend.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Oracle.ManagedDataAccess.Client;
 
 namespace backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AuthController(OracleService oracleService) : ControllerBase
+    public class AuthController(IAllocationService allocationService) : ControllerBase
     {
-        private readonly OracleService _oracleService = oracleService;
+        private readonly IAllocationService _allocationService = allocationService;
 
+        /// <summary>
+        /// Validates user credentials and retrieves matching region configurations.
+        /// </summary>
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginCredentials loginRequest)
+        [HttpPost("login-details")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(RegionDetailsDto))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetRegionDetailsAfterLogin([FromBody] LoginRequest request, CancellationToken cancellationToken)
         {
-            if (loginRequest == null || string.IsNullOrEmpty(loginRequest.Uname) || string.IsNullOrEmpty(loginRequest.Password))
-            {
-                return BadRequest("Invalid client request");
-            }
-
-            string connectionString = _oracleService.GetConnectionString()
-                ?? throw new InvalidOperationException("Connection string not found.");
-
-            using var connection = new OracleConnection(connectionString);
-
-            // Dapper handles Oracle connections seamlessly using the exact same syntax
-            var result = await connection.QueryFirstOrDefaultAsync<RegionResult>(
-                Queries.GetRegionDetailsAfterLogin,
-                new { Uname = loginRequest.Uname, Password = loginRequest.Password }
-            );
-
+            var result = await _allocationService.GetRegionDetailsAfterLoginAsync(request.Username, request.Password, cancellationToken);
             if (result == null)
             {
-                return Unauthorized("Invalid username or password.");
+                return Unauthorized(new { message = "Invalid credentials or region assignment not found." });
             }
-
             return Ok(result);
         }
     }

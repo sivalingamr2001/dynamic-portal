@@ -1,191 +1,178 @@
-import { useCallback, useMemo, useState } from "react";
-import type { GridApi, ColDef, IRowNode } from "ag-grid-community";
-import { Download, Mail, Plus, Trash2, User } from "lucide-react";
-import { DynamicGrid, IconCellRenderer, LinkCellRenderer, StatusBadgeCellRenderer, type BulkAction, type GridActionItem, type InfiniteDataSource } from "@/components/DynamicGrid/Index";
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AnimatePresence, motion } from 'framer-motion'
+import React, { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import { z } from 'zod'
 
-interface EmployeeRow {
-    [key: string]: unknown;
-    id: number;
-    name: string;
-    email: string;
-    department: string;
-    role: string;
-    status: string;
-    joinDate: string;
-    salary: number;
-}
+import { HeaderFormStep, headerSchema } from '@/components/allocations/components/HeaderFormStep'
+import { LineFormStep, lineSchema } from '@/components/allocations/components/LineFormStep'
+import { WorkflowProgress } from '@/components/certifications/WorkflowProgress'
+import type { AllocationHeader, AllocationLine } from '@/types'
+import { toast } from 'sonner'
+import { useAuth } from '../../context/AuthContext'
+import { AllocationReviewSummary } from '@/components/allocations/components/AllocationReviewSummary'
 
-const EMPLOYEES: EmployeeRow[] = Array.from({ length: 500 }, (_, index) => ({
-    id: index + 1,
-    name: `Employee ${index + 1}`,
-    email: `employee${index + 1}@company.com`,
-    department: ["Engineering", "HR", "Finance", "Sales"][index % 4],
-    role: ["Developer", "Manager", "Analyst", "Lead"][index % 4],
-    status: index % 2 === 0 ? "Active" : "Inactive",
-    joinDate: "2025-01-01",
-    salary: 500000 + index * 1000,
-}));
+export type HeaderFormData = z.infer<typeof headerSchema>
+export type LineFormData = z.infer<typeof lineSchema>
+export type LineItemWithId = LineFormData & { id: string }
 
-async function fetchEmployeePage(
-    startRow: number,
-    endRow: number,
-    searchTerm?: string
-) {
-    let data = EMPLOYEES;
+export const NewAllocationPage: React.FC = () => {
+    const navigate = useNavigate()
+    const { currentUser } = useAuth()
 
-    if (searchTerm?.trim()) {
-        const search = searchTerm.toLowerCase();
+    // Step state choreography lifecycle tracking: 1 -> 2 -> 3
+    const [step, setStep] = useState<1 | 2 | 3>(1)
+    const [lines, setLines] = useState<LineItemWithId[]>([])
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
-        data = data.filter(
-            (x) =>
-                x.name.toLowerCase().includes(search) ||
-                x.email.toLowerCase().includes(search) ||
-                x.department.toLowerCase().includes(search)
-        );
+    const headerForm = useForm<HeaderFormData>({
+        resolver: zodResolver(headerSchema),
+        defaultValues: {
+            requestDate: new Date().toISOString().split('T')[0],
+            allocationBasis: 'customer_specific',
+            customerType: 'existing',
+            region: '',
+            subRegion: '',
+            operatingUnit: '',
+            weeks: '',
+            preparedBy: '',
+            remarks: '',
+        },
+    })
+
+    const lineForm = useForm<LineFormData>({
+        resolver: zodResolver(lineSchema),
+        defaultValues: {
+            warehouse: '',
+            itemCode: '',
+            requestedQuantity: 1,
+            targetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        },
+    })
+
+    const totalQuantity = lines.reduce((sum, line) => sum + line.requestedQuantity, 0)
+
+    const handleNext = () => {
+        if (step === 1) {
+            setStep(2)
+        } else if (step === 2) {
+            if (lines.length === 0) {
+                toast.error('Please add at least one line item before reviewing')
+                return
+            }
+            setStep(3)
+        }
     }
 
-    return {
-        rows: data.slice(startRow, endRow),
-        lastRow: data.length,
-    };
-}
+    const handleBack = () => {
+        if (step === 2) setStep(1)
+        if (step === 3) setStep(2)
+    }
 
-export const NewAllocationPage = () => {
-    const [lastAction, setLastAction] = useState("");
+    const handleCreateAllocation = async () => {
+        const headerValues = headerForm.getValues()
+        setIsSubmitting(true)
+        try {
+            const headerId = `ah_${Date.now()}`
+            const allocationHeader: AllocationHeader = {
+                id: headerId,
+                requestId: `REQ-${Date.now()}`,
+                createdDate: headerValues.requestDate,
+                allocationBasis: headerValues.allocationBasis || 'customer_specific',
+                customerId: headerValues.billToId,
+                customerName: headerValues.billToCustomer,
+                billToId: headerValues.billToId,
+                customerType: headerValues.customerType || 'existing',
+                shipToId: headerValues.shipToId,
+                territory: headerValues.region,
+                remarks: headerValues.remarks,
+                status: 'pending',
+                totalLines: lines.length,
+                totalQuantity,
+                createdBy: currentUser?.name || '',
+                createdByName: currentUser?.name || '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            }
 
-    const handleNavigate = useCallback((row: EmployeeRow) => {
-        setLastAction(`Opened: ${row.name} (ID ${row.id})`);
-    }, []);
+            const allocationLines: AllocationLine[] = lines.map((line, idx) => ({
+                id: `al_${Date.now()}_${idx}`,
+                allocationHeaderId: headerId,
+                lineNumber: idx + 1,
+                warehouse: line.warehouse,
+                itemCode: line.itemCode,
+                requestedQuantity: line.requestedQuantity,
+                targetDate: line.targetDate,
+                status: 'pending',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            }))
 
-    const colDefs = useMemo<ColDef<EmployeeRow>[]>(() => [
-        {
-            headerName: "Name",
-            field: "name",
-            minWidth: 160,
-            cellRenderer: LinkCellRenderer,
-            valueGetter: (p) => ({
-                label: p.data?.name ?? "",
-                onClick: (node: IRowNode) =>
-                    handleNavigate(node.data as EmployeeRow),
-            }),
-        },
-        {
-            headerName: "Email",
-            field: "email",
-            minWidth: 200,
-            cellRenderer: IconCellRenderer,
-            valueGetter: (p) => ({
-                icon: <Mail className="h-3 w-3" />,
-                text: p.data?.email ?? "",
-            }),
-        },
-        {
-            headerName: "Department",
-            field: "department",
-            minWidth: 160,
-            cellRenderer: IconCellRenderer,
-            valueGetter: (p) => ({
-                icon: <User className="h-3 w-3" />,
-                text: p.data?.department ?? "",
-            }),
-        },
-        {
-            headerName: "Role",
-            field: "role",
-            minWidth: 120,
-        },
-        {
-            headerName: "Status",
-            field: "status",
-            minWidth: 120,
-            cellRenderer: StatusBadgeCellRenderer,
-        },
-        {
-            headerName: "Join Date",
-            field: "joinDate",
-            minWidth: 130,
-        },
-        {
-            headerName: "Salary (₹)",
-            field: "salary",
-            minWidth: 140,
-            valueFormatter: (p) =>
-                p.value != null
-                    ? new Intl.NumberFormat("en-IN", {
-                          style: "currency",
-                          currency: "INR",
-                          maximumFractionDigits: 0,
-                      }).format(p.value)
-                    : "",
-        },
-    ], [handleNavigate]);
+            console.log({
+                header: allocationHeader,
+                lines: allocationLines,
+            })
 
-    const customActions = useMemo<GridActionItem[]>(() => [
-        {
-            label: "Add Employee",
-            icon: <Plus className="h-3 w-3" />,
-            variant: "primary",
-            onClick: () => setLastAction("Add Employee clicked"),
-        },
-        {
-            label: "Export CSV",
-            icon: <Download className="h-3 w-3" />,
-            variant: "secondary",
-            onClick: (api: GridApi | null) => {
-                api?.exportDataAsCsv({
-                    fileName: "employees.csv",
-                });
-                setLastAction("CSV export triggered");
-            },
-        },
-    ], []);
-
-    const bulkActions = useMemo<BulkAction<EmployeeRow>[]>(() => [
-        {
-            label: "Delete Selected",
-            icon: <Trash2 className="h-3 w-3" />,
-            variant: "danger",
-            onClick: (rows) =>
-                setLastAction(
-                    `Delete: ${rows.map((r) => r.name).join(", ")}`
-                ),
-        },
-        {
-            label: "Export Selected",
-            icon: <Download className="h-3 w-3" />,
-            variant: "secondary",
-            onClick: (rows, api) => {
-                api?.exportDataAsCsv({
-                    onlySelected: true,
-                    fileName: "selected.csv",
-                });
-                setLastAction(`Exported ${rows.length} rows`);
-            },
-        },
-    ], []);
-
-    const infiniteSource = useMemo<InfiniteDataSource<EmployeeRow>>(
-        () => ({
-            pageSize: 50,
-            fetchPage: ({ startRow, endRow, searchTerm }) =>
-                fetchEmployeePage(startRow, endRow, searchTerm),
-        }),
-        []
-    );
+            toast.success('Allocation Created Successfully')
+            navigate('/allocations/list', { state: { success: true } })
+        } catch (error) {
+            console.error('Failed to create allocation:', error)
+            toast.error('Failed to save allocation')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
 
     return (
-        <div className="flex flex-col gap-4 h-screen">
-            <div className="flex-1 min-h-0">
-                <DynamicGrid<EmployeeRow>
-                    infiniteSource={infiniteSource}
-                    colDefs={colDefs}
-                    rowSelection="multiple"
-                    customActions={customActions}
-                    bulkActions={bulkActions}
-                    pageSize={50}
-                    showPagination={true}
+        <div className="w-full space-y-4">
+            <div className="w-full">
+                <WorkflowProgress
+                    steps={['Allocation Details', 'Line Items Breakdown', 'Submit']}
+                    currentStep={step - 1}
                 />
             </div>
+
+            <div className="grid grid-cols-1 gap-4 items-start w-full">
+                <div className="w-full">
+                    <AnimatePresence mode="wait">
+                        {step === 1 && (
+                            <HeaderFormStep
+                                key="step-1"
+                                form={headerForm}
+                                onNextStep={handleNext}
+                            />
+                        )}
+                        {step === 2 && (
+                            <LineFormStep
+                                key="step-2"
+                                form={lineForm}
+                                lines={lines}
+                                setLines={setLines}
+                                onBack={handleBack}
+                                onNext={handleNext}
+                            />
+                        )}
+                        {step === 3 && (
+                            <motion.div
+                                key="step-3"
+                                initial={{ opacity: 0, x: 15 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -15 }}
+                                className="space-y-4 w-full"
+                            >
+                                <AllocationReviewSummary
+                                    headerData={headerForm.getValues()}
+                                    lines={lines}
+                                    onBack={handleBack}
+                                    onSubmit={handleCreateAllocation}
+                                    isSubmitting={isSubmitting}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
         </div>
-    );
-};
+    )
+}

@@ -19,21 +19,6 @@ export const routesConfig: RouteObject[] = [
             element: withSuspense(Pages.DashboardPage),
             path: "/dashboard",
           },
-
-          //Admin
-          {
-            element: withSuspense(Pages.AuditLogsPage),
-            path: "/admin/audit"
-          },
-          {
-            element: withSuspense(Pages.ConfigPage),
-            path: "/admin/config"
-          },
-          {
-            element: withSuspense(Pages.RolesPage),
-            path: "/admin/roles"
-          },
-          //Allocations
           {
             element: withSuspense(Pages.MyAllocationsPage),
             path: "/allocations/list"
@@ -44,15 +29,10 @@ export const routesConfig: RouteObject[] = [
           },
           //Approvals
           {
-            element: withSuspense(Pages.ApprovalsPage),
-            path: "/approvals"
+            element: withSuspense(Pages.AllocationDetailsPage),
+            path: "/allocations/details/:id"
           },
-          //Fulfillment
-          {
-            element: withSuspense(Pages.FulfillmentPage),
-            path: "/fulfillment"
-          }
-        ],
+        ]
       },
     ],
   },
@@ -63,7 +43,7 @@ export const routesConfig: RouteObject[] = [
       {
         index: true,
         element: withSuspense(Pages.LoginPage),
-        path: "/login",
+        path: "/",
       },
     ],
   },

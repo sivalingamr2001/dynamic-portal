@@ -10,7 +10,7 @@ const MobileBottomNav: React.FC = () => {
   const { currentUserRole } = useAuth()
   const location = useLocation()
 
-  const currentRole: UserRole = (currentUserRole as UserRole) || 'sales_rep'
+  const currentRole: UserRole = (currentUserRole as UserRole) || 'User'
 
   const { config } = usePortalConfig()
 

@@ -12,26 +12,6 @@ export const DashboardPage = lazy(() =>
   }))
 )
 
-// Admin Pages
-
-export const AuditLogsPage = lazy(() =>
-  import("@/pages/admin/AuditLogsPage").then((module) => ({
-    default: module.AuditLogsPage,
-  }))
-)
-
-export const ConfigPage = lazy(() =>
-  import("@/pages/admin/ConfigPage").then((module) => ({
-    default: module.ConfigPage,
-  }))
-)
-
-export const RolesPage = lazy(() =>
-  import("@/pages/admin/RolesPage").then((module) => ({
-    default: module.RolesPage,
-  }))
-)
-
 // Allocation page
 export const MyAllocationsPage = lazy(() =>
   import("@/pages/allocations/MyAllocationsPage").then((module) => ({
@@ -45,17 +25,9 @@ export const NewAllocationPage = lazy(() =>
   }))
 )
 
-// Approvals
-export const ApprovalsPage = lazy(() =>
-  import("@/pages/approvals/ApprovalsPage").then((module) => ({
-    default: module.ApprovalsPage,
-  }))
-)
-
-// Fulfillment
-export const FulfillmentPage = lazy(() =>
-  import("@/pages/fulfillment/FulfillmentPage").then((module) => ({
-    default: module.FulfillmentPage,
+export const AllocationDetailsPage = lazy(() =>
+  import("@/pages/allocations/AllocationDetailsPageV2").then((module) => ({
+    default: module.AllocationDetailsPageV2,
   }))
 )
 

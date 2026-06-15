@@ -1,4 +1,7 @@
 using Backend.DB;
+using Backend.Interfaces;
+using Backend.Services;
+using Backend.Shared;
 using Serilog;
 
 namespace Backend
@@ -14,13 +17,20 @@ namespace Backend
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
-            // ── Serilog logging from appsettings.json
-            builder.Services.AddSerilog((services, lc) => lc
+            // Fixed duplicate schema crash by using full type names for Swagger schema IDs
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.CustomSchemaIds(type => type.FullName);
+            });
+
+            // ── Serilog logging from appsettings.json (setup as Host logger)
+            Serilog.Log.Logger = new Serilog.LoggerConfiguration()
                 .Enrich.WithMachineName()
                 .ReadFrom.Configuration(builder.Configuration)
-                .ReadFrom.Services(services));
+                .CreateLogger();
+
+            builder.Host.UseSerilog();
 
             // 1. Define and add the CORS policy
             builder.Services.AddCors(options =>
@@ -35,28 +45,52 @@ namespace Backend
                 });
             });
 
-
-            // Register the infrastructure DB service
+            // Register the infrastructure DB service and dynamic dapper services
             builder.Services.AddSingleton<OracleService>();
 
-            var app = builder.Build();
+            // Register an Oracle-based IDbConnectionFactory using the connection string
+            // provided by OracleService, and register the DynamicQueryExecutor.
+            builder.Services.AddSingleton<Backend.Shared.IDbConnectionFactory>(sp =>
+            {
+                var oracleSvc = sp.GetRequiredService<OracleService>();
+                var conn = oracleSvc.GetConnectionString();
+                return new Backend.Shared.OracleConnectionFactory(conn);
+            });
 
-            // Configure the HTTP request pipeline.
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            builder.Services.AddSingleton<Backend.Shared.IDynamicQueryExecutor, Backend.Shared.DynamicQueryExecutor>();
+            builder.Services.AddScoped<IAllocationService, AllocationService>();
 
-            app.UseCors("AllowViteApp");
-            app.UseHttpsRedirection();
+            WebApplication app = null;
+            try
+            {
+                app = builder.Build();
 
-            // 3. Static Files (Serves your built frontend)
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
+                // Configure the HTTP request pipeline.
+                app.UseSwagger();
+                app.UseSwaggerUI();
 
-            // 5. Endpoints
-            app.MapControllers();
-            app.MapFallbackToFile("index.html");
+                app.UseCors("AllowFrontend");
+                app.UseHttpsRedirection();
 
-            app.Run();
+                // 3. Static Files (Serves your built frontend)
+                app.UseDefaultFiles();
+                app.UseStaticFiles();
+
+                // 5. Endpoints
+                app.MapControllers();
+                app.MapFallbackToFile("index.html");
+
+                app.Run();
+            }
+            catch (Exception ex)
+            {
+                // Log fatal startup errors and ensure logs are flushed to disk.
+                Serilog.Log.Fatal(ex, "Host terminated unexpectedly");
+            }
+            finally
+            {
+                Serilog.Log.CloseAndFlush();
+            }
         }
     }
 }

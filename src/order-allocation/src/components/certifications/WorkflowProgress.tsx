@@ -8,7 +8,7 @@ interface WorkflowProgressProps {
 
 export function WorkflowProgress({ steps, currentStep }: WorkflowProgressProps) {
   return (
-    <div className="flex items-center gap-0 w-full overflow-x-auto">
+    <div className="flex items-center gap-0 w-full overflow-x-auto ml-6">
       {steps.map((step, index) => {
         const isComplete = index < currentStep;
         const isCurrent = index === currentStep;

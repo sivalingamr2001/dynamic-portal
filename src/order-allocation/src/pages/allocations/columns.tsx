@@ -66,7 +66,7 @@ export const binApprovalColumns: ColDef[] = [
         <input 
           type="number" 
           defaultValue={params.value}
-          className="w-full max-w-[85px] h-5 px-1.5 text-right font-semibold text-xs bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full max-w-21.25 h-5 px-1.5 text-right font-semibold text-xs bg-background border border-input rounded focus:outline-none focus:ring-1 focus:ring-primary"
         />
       );
     }

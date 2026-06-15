@@ -17,8 +17,8 @@ export const LoginPage: React.FC = () => {
     const { loading, withLoader } = useLoader()
     const navigate = useNavigate()
 
-    const [username, setUsername] = useState('MUM25225')
-    const [password, setPassword] = useState('MAR7')
+    const [username, setUsername] = useState('DEL-NCR')
+    const [password, setPassword] = useState('NCR@77')
     const [localError, setLocalError] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
