@@ -1,4 +1,4 @@
-﻿namespace Application.Shared;
+﻿﻿namespace Application.Shared;
 
 /// <summary>
 /// Provides centralized SQL query constants used throughout the application.
@@ -102,4 +102,61 @@ public static class Queries
             FROM hr_operating_units 
             WHERE ORGANIZATION_ID IN (103, 704, 844)
             ORDER BY ""Name"" ASC";
+
+    /// <summary>
+    /// Retrieves specific inventory organization definitions.
+    /// </summary>
+    public const string GetInventoryOrganizations = @"
+            SELECT ORGANIZATION_ID AS ""OrganizationId"", ORGANIZATION_CODE AS ""OrganizationCode"" 
+            FROM ORG_ORGANIZATION_DEFINITIONS 
+            WHERE OPERATING_UNIT IN (103,704,844)
+              AND ORGANIZATION_ID IN (904,924,110,111,304,384,524,464,444,504,484,505,644,804,1025,724)";
+
+    /// <summary>
+    /// Retrieves inventory item ID based on the Segment1 item code.
+    /// </summary>
+    public const string GetInventoryItemDetails = @"
+            SELECT INVENTORY_ITEM_ID AS ""InventoryItemId"", SEGMENT1 AS ""ItemCode"" 
+            FROM MTL_SYSTEM_ITEMS 
+            WHERE SEGMENT1 = :ItemCode";
+
+    /// <summary>
+    /// Retrieves the Sales RRS Category for a given Organization and Inventory Item.
+    /// </summary>
+    public const string GetSalesRrsCategory = @"
+            SELECT JAN_SALES_RRS_CATEGORY(:OrganizationId, :InventoryItemId) AS ""RrsCategory"" 
+            FROM DUAL";
+
+    // --- BIN ALLOCATION DML QUERIES ---
+
+    public const string InsertAllocationHeader = @"
+            INSERT INTO ALLOCATION_HEADERS (HeaderId, RequestDate, AllocationBasis, CustomerId, TerritoryId, Remarks, CreatedBy, Status, CreatedAt)
+            VALUES (:HeaderId, :RequestDate, :AllocationBasis, :CustomerId, :TerritoryId, :Remarks, :CreatedBy, 'Pending', SYSDATE)";
+
+    public const string InsertAllocationLine = @"
+            INSERT INTO ALLOCATION_LINES (LineId, HeaderId, ItemCode, WarehouseId, RequestedQty, ApprovedQty, TargetDate, Status, CreatedAt)
+            VALUES (:LineId, :HeaderId, :ItemCode, :WarehouseId, :RequestedQty, 0, :TargetDate, 'Pending', SYSDATE)";
+
+    public const string UpdateAllocationLine = @"
+            UPDATE ALLOCATION_LINES 
+            SET RequestedQty = :RequestedQty, TargetDate = :TargetDate, UpdatedAt = SYSDATE 
+            WHERE LineId = :LineId AND Status = 'Pending'";
+
+    public const string InsertApprovalRecord = @"
+            INSERT INTO APPROVALS (ApprovalId, LineId, ApproverId, ApprovedQty, Decision, Remarks, ActionDate)
+            VALUES (:ApprovalId, :LineId, :ApproverId, :ApprovedQty, :Decision, :Remarks, SYSDATE)";
+
+    public const string UpdateLineStatus = @"
+            UPDATE ALLOCATION_LINES 
+            SET Status = :Status, ApprovedQty = :ApprovedQty, UpdatedAt = SYSDATE 
+            WHERE LineId = :LineId";
+
+    public const string InsertCancellationRecord = @"
+            INSERT INTO CANCELLATIONS (CancellationId, LineId, CancelledQty, Reason, CancelledBy, CancelDate)
+            VALUES (:CancellationId, :LineId, :CancelledQty, :Reason, :CancelledBy, SYSDATE)";
+
+    public const string RejectAllocationLine = @"
+            UPDATE ALLOCATION_LINES 
+            SET Status = 'Rejected', UpdatedAt = SYSDATE 
+            WHERE LineId = :LineId";
 }
