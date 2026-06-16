@@ -12,16 +12,10 @@ import {
   getPaginatedItems,
   getItemByCode,
   getDemandMetricsApi,
-  type RegionDetailsDto,
-  type CustomerDto,
-  type EmployeeDto,
-  type AddressDto,
-  type OperatingUnitDto,
-  type ItemOperatingUnitDto,
-  type AllocationItemDto,
-  type DemandMetricsDto,
-  type PagedResult,
 } from "@/api/allocationApi" // Adjust path as needed
+import type { RegionDetailsDto, CustomerDto, EmployeeDto, OperatingUnitDto, AddressDto, DemandMetricsDto } from "@/api/types/allocationDto"
+import type { PagedResult } from "@/api/types/pagedResult"
+import type { ItemOperatingUnitDto } from "@/components/allocation/Items/types"
 
 export const useAllocationForm = () => {
   // =========================================================================
@@ -64,8 +58,8 @@ export const useAllocationForm = () => {
   )
   const [rrsCategory, setRrsCategory] = useState<string>("")
   const [itemsData, setItemsData] =
-    useState<PagedResult<AllocationItemDto> | null>(null)
-  const [selectedItem, setSelectedItem] = useState<AllocationItemDto | null>(
+    useState<PagedResult<ItemOperatingUnitDto> | null>(null)
+  const [selectedItem, setSelectedItem] = useState<ItemOperatingUnitDto | null>(
     null
   )
   const [demandMetrics, setDemandMetrics] = useState<DemandMetricsDto | null>(

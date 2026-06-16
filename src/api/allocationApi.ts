@@ -1,83 +1,25 @@
 import { axiosClient } from "@/lib/axiosClient"
-
-// =========================================================================
-// DATA TRANSFER OBJECTS (DTOs) & DATA LAYOUT SCHEMAS
-// =========================================================================
-
-export interface RegionDetailsDto {
-  region: string
-  subRegion: string
-}
-
-export interface CustomerDto {
-  customerId: number
-  customerName: string
-  region: string
-}
-
-export interface EmployeeDto {
-  lastName: string
-  employeeNumber: string
-}
-
-export interface AddressDto {
-  address1: string
-  address2: string
-  address3: string
-  city: string
-  postalCode: string
-  orgId: number
-  location: string
-}
-
-export interface OperatingUnitDto {
-  organizationId: number
-  name: string
-}
-
-export interface ItemOperatingUnitDto {
-  organizationId: number
-  organizationCode: string
-}
-
-export interface AllocationItemDto {
-  inventoryItemId: number
-  itemCode: string
-  Description?: string
-}
-
-export interface RrsCategoryResponseDto {
-  rrsCategory: string
-}
-
-export interface DemandMetricsDto {
-  oaPendingQuantity: number
-  oaRsvQty: number
-  oaPickedQty: number
-  binQty: number
-  binRsvQty: number
-}
-
-export interface PagedResult<T> {
-  data: T[]
-  totalCount: number
-  page: number
-  pageSize: number
-  totalPages: number
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-}
-
-// =========================================================================
-// CORE CONFIGURATION HEADERS LAYER (ALLOCATION ENDPOINTS)
-// =========================================================================
+import type {
+  RegionDetailsDto,
+  CustomerDto,
+  EmployeeDto,
+  AddressDto,
+  OperatingUnitDto,
+  DemandMetricsDto,
+  InventoryItemDto,
+  RrsCategoryResponseDto,
+  AllocationLineDto,
+} from "./types/allocationDto"
+import type { PagedResult } from "./types/pagedResult"
 
 /**
  * Returns a unique array list of all system regions and sub-regions.
  * Maps to: GET /api/Allocation/regions
  */
 export const getAllRegionsApi = async (): Promise<RegionDetailsDto[]> => {
-  const response = await axiosClient.get<RegionDetailsDto[]>("/Allocation/regions")
+  const response = await axiosClient.get<RegionDetailsDto[]>(
+    "/Allocation/regions"
+  )
   return response.data
 }
 
@@ -89,9 +31,12 @@ export const getBillToCustomersApi = async (
   region: string,
   subRegion: string
 ): Promise<CustomerDto[]> => {
-  const response = await axiosClient.get<CustomerDto[]>("/Allocation/customers/bill-to", {
-    params: { region, subRegion },
-  })
+  const response = await axiosClient.get<CustomerDto[]>(
+    "/Allocation/customers/bill-to",
+    {
+      params: { region, subRegion },
+    }
+  )
   return response.data
 }
 
@@ -103,9 +48,12 @@ export const getShipToCustomersApi = async (
   region: string,
   subRegion: string
 ): Promise<CustomerDto[]> => {
-  const response = await axiosClient.get<CustomerDto[]>("/Allocation/customers/ship-to", {
-    params: { region, subRegion },
-  })
+  const response = await axiosClient.get<CustomerDto[]>(
+    "/Allocation/customers/ship-to",
+    {
+      params: { region, subRegion },
+    }
+  )
   return response.data
 }
 
@@ -113,10 +61,15 @@ export const getShipToCustomersApi = async (
  * Pulls qualified executive employee profiles working out of a specific region.
  * Maps to: GET /api/Allocation/employees/prepared-by
  */
-export const getPreparedByEmployeesApi = async (region: string): Promise<EmployeeDto[]> => {
-  const response = await axiosClient.get<EmployeeDto[]>("/Allocation/employees/prepared-by", {
-    params: { region },
-  })
+export const getPreparedByEmployeesApi = async (
+  region: string
+): Promise<EmployeeDto[]> => {
+  const response = await axiosClient.get<EmployeeDto[]>(
+    "/Allocation/employees/prepared-by",
+    {
+      params: { region },
+    }
+  )
   return response.data
 }
 
@@ -152,7 +105,9 @@ export const getWeeksDropdownApi = async (): Promise<string[]> => {
  * Maps to: GET /api/Allocation/operating-units
  */
 export const getOperatingUnitsApi = async (): Promise<OperatingUnitDto[]> => {
-  const response = await axiosClient.get<OperatingUnitDto[]>("/Allocation/operating-units")
+  const response = await axiosClient.get<OperatingUnitDto[]>(
+    "/Allocation/operating-units"
+  )
   return response.data
 }
 
@@ -164,8 +119,10 @@ export const getOperatingUnitsApi = async (): Promise<OperatingUnitDto[]> => {
  * Fetches the list of valid operational organization units for item rows.
  * Maps to: GET /api/allocations/organizations
  */
-export const getItemOperatingUnits = async (): Promise<ItemOperatingUnitDto[]> => {
-  const response = await axiosClient.get<ItemOperatingUnitDto[]>("/allocations/organizations")
+export const getItemOperatingUnits = async (): Promise<InventoryItemDto[]> => {
+  const response = await axiosClient.get<InventoryItemDto[]>(
+    "/allocations/organizations"
+  )
   return response.data
 }
 
@@ -177,9 +134,12 @@ export const getItemRrsCategory = async (
   organizationId: number | string,
   inventoryItemId: number | string
 ): Promise<RrsCategoryResponseDto> => {
-  const response = await axiosClient.get<RrsCategoryResponseDto>("/allocations/rrs-category", {
-    params: { organizationId, inventoryItemId },
-  })
+  const response = await axiosClient.get<RrsCategoryResponseDto>(
+    "/allocations/rrs-category",
+    {
+      params: { organizationId, inventoryItemId },
+    }
+  )
   return response.data
 }
 
@@ -191,14 +151,17 @@ export const getPaginatedItems = async (
   page: number,
   pageSize: number,
   search?: string
-): Promise<PagedResult<AllocationItemDto>> => {
-  const response = await axiosClient.get<PagedResult<AllocationItemDto>>("/allocations/items", {
-    params: {
-      page,
-      pageSize,
-      search: search?.trim() || undefined,
-    },
-  })
+): Promise<PagedResult<InventoryItemDto>> => {
+  const response = await axiosClient.get<PagedResult<InventoryItemDto>>(
+    "/allocations/items",
+    {
+      params: {
+        page,
+        pageSize,
+        search: search?.trim() || undefined,
+      },
+    }
+  )
   return response.data
 }
 
@@ -206,8 +169,10 @@ export const getPaginatedItems = async (
  * Resolves item identifiers and details based on a single exact item code string.
  * Maps to: GET /api/allocations/items/{itemCode}
  */
-export const getItemByCode = async (itemCode: string): Promise<AllocationItemDto> => {
-  const response = await axiosClient.get<AllocationItemDto>(
+export const getItemByCode = async (
+  itemCode: string
+): Promise<AllocationLineDto> => {
+  const response = await axiosClient.get<AllocationLineDto>(
     `/allocations/items/${encodeURIComponent(itemCode.trim())}`
   )
   return response.data
@@ -222,8 +187,11 @@ export const getDemandMetricsApi = async (
   organizationId: number,
   inventoryItemId: number
 ): Promise<DemandMetricsDto> => {
-  const response = await axiosClient.get<DemandMetricsDto>("/allocations/demand-metrics", {
-    params: { customerId, organizationId, inventoryItemId },
-  })
+  const response = await axiosClient.get<DemandMetricsDto>(
+    "/allocations/demand-metrics",
+    {
+      params: { customerId, organizationId, inventoryItemId },
+    }
+  )
   return response.data
 }

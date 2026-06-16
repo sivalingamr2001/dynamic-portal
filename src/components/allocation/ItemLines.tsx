@@ -1,15 +1,13 @@
 'use client';
 
 import { Table, TableBody } from '@/components/ui/table';
-import { useItemCodeSearch } from './hooks/useItemCodeSearch';
-import { useDemandMetrics } from './hooks/useDemandMetrics';
-import { normalizeItemCodeOptions } from './utils/normalizeOptions';
-import { TableHeader } from './ItemTableHeader';
-import { ItemLineRow } from './ItemLineRow';
-import { AddLineButton } from './AddLineButton';
-import type { Props } from './types';
-
-export { type Props } from './types';
+import { AddLineButton } from './Items/AddLineButton';
+import { useDemandMetrics } from './Items/hooks/useDemandMetrics';
+import { useItemCodeSearch } from './Items/hooks/useItemCodeSearch';
+import { ItemLineRow } from './Items/ItemLineRow';
+import { ItemTableHeader } from './Items/ItemTableHeader';
+import { normalizeItemCodeOptions } from './Items/utils/normalizeOptions';
+import type { Props } from './Items/types';
 
 export default function ItemLines({
   itemLines,
@@ -76,7 +74,7 @@ export default function ItemLines({
       <div className="overflow-x-auto rounded border border-slate-200 bg-white">
         <div className="max-h-55 overflow-y-auto custom-scrollbar">
           <Table className="w-full border-collapse">
-            <TableHeader />
+            <ItemTableHeader />
             <TableBody>
               {itemLines.map((line, index) => (
                 <ItemLineRow
