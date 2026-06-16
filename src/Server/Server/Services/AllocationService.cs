@@ -1,6 +1,6 @@
 ﻿using Application.Shared;
-using Backend.Dto;
 using Backend.Interfaces;
+using Backend.Models;
 using Backend.Shared;
 
 namespace Backend.Services;

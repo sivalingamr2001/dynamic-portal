@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Threading.Tasks;
 using Application.Interfaces;
-using Application.Models;
 using Application.Shared;
+using Backend.Models;
 using Dapper;
+using System.Data;
 
-namespace Application.Services;
+namespace Backend.Services;
 
 public class BinAllocationService : IBinAllocationService
 {
@@ -23,32 +20,50 @@ public class BinAllocationService : IBinAllocationService
         return await _dbConnection.QueryAsync<OrganizationDto>(Queries.GetInventoryOrganizations);
     }
 
-    public async Task<InventoryItemDto> GetInventoryItemDetailsAsync(string itemCode)
+    public async Task<PagedResult<InventoryItemDto>> GetInventoryItemDetailsAsync(int page, int pageSize, string? search)
     {
-        return await _dbConnection.QueryFirstOrDefaultAsync<InventoryItemDto>(
-            Queries.GetInventoryItemDetails, 
-            new { ItemCode = itemCode });
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        int offset = (page - 1) * pageSize;
+
+        // Standardize search query value to look for partial strings or handle nulls smoothly
+        string? searchParam = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%";
+
+        // Call 1: Dynamic filter applied to the base Oracle count selector
+        string countSql = @"
+        SELECT COUNT(*) 
+        FROM MTL_SYSTEM_ITEMS 
+        WHERE (:Search IS NULL OR UPPER(SEGMENT1) LIKE UPPER(:Search))";
+
+        int totalCount = await _dbConnection.ExecuteScalarAsync<int>(countSql, new { Search = searchParam });
+
+        // Call 2: Query the matching filtered subset window
+        var result = await _dbConnection.QueryAsync<InventoryItemDto>(
+            Queries.GetInventoryItemDetails,
+            new { Offset = offset, PageSize = pageSize, Search = searchParam }
+        );
+
+        return new PagedResult<InventoryItemDto>(result.ToList(), totalCount, page, pageSize);
     }
 
     public async Task<string> GetSalesRrsCategoryAsync(int organizationId, int inventoryItemId)
     {
         return await _dbConnection.QueryFirstOrDefaultAsync<string>(
-            Queries.GetSalesRrsCategory, 
+            Queries.GetSalesRrsCategory,
             new { OrganizationId = organizationId, InventoryItemId = inventoryItemId });
     }
 
-    public async Task<string> CreateAllocationAsync(CreateAllocationRequest request)
+    // Changed return type from string to int
+    public async Task<int> CreateAllocationAsync(CreateAllocationRequest request)
     {
         if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
         using var transaction = _dbConnection.BeginTransaction();
-        
+
         try
         {
-            var headerId = Guid.NewGuid().ToString();
-            
-            await _dbConnection.ExecuteAsync(Queries.InsertAllocationHeader, new
+            // ExecuteScalarAsync retrieves the auto-generated identity int ID from the DB
+            var headerId = await _dbConnection.ExecuteScalarAsync<int>(Queries.InsertAllocationHeader, new
             {
-                HeaderId = headerId,
                 request.Header.RequestDate,
                 request.Header.AllocationBasis,
                 request.Header.CustomerId,
@@ -59,10 +74,9 @@ public class BinAllocationService : IBinAllocationService
 
             foreach (var line in request.Lines)
             {
-                var lineId = Guid.NewGuid().ToString();
+                // DB automatically generates the line items' primary keys
                 await _dbConnection.ExecuteAsync(Queries.InsertAllocationLine, new
                 {
-                    LineId = lineId,
                     HeaderId = headerId,
                     line.ItemCode,
                     line.WarehouseId,
@@ -81,17 +95,32 @@ public class BinAllocationService : IBinAllocationService
         }
     }
 
-    public async Task<bool> UpdateAllocationAsync(string headerId, CreateAllocationRequest request)
+    public async Task<DemandMetricsDto?> GetDemandMetricsAsync(int customerId, int organizationId, int inventoryItemId)
+    {
+        // Executes a clean first-or-default look pattern for immediate grid populating
+        return await _dbConnection.QueryFirstOrDefaultAsync<DemandMetricsDto>(
+            Queries.GetDemandMetrics,
+            new
+            {
+                CustomerId = customerId,
+                OrganizationId = organizationId,
+                InventoryItemId = inventoryItemId
+            }
+        );
+    }
+
+    // Changed headerId type from string to int
+    public async Task<bool> UpdateAllocationAsync(int headerId, CreateAllocationRequest request)
     {
         if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
         using var transaction = _dbConnection.BeginTransaction();
-        
+
         try
         {
-            // Example: Only updating lines for simplicity (Header updates can be added similarly)
             foreach (var line in request.Lines)
             {
-                if (!string.IsNullOrEmpty(line.LineId))
+                // LineId check modified to look for valid positive integers
+                if (line.LineId > 0)
                 {
                     await _dbConnection.ExecuteAsync(Queries.UpdateAllocationLine, new
                     {
@@ -116,15 +145,14 @@ public class BinAllocationService : IBinAllocationService
     {
         if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
         using var transaction = _dbConnection.BeginTransaction();
-        
+
         try
         {
-            var approvalId = Guid.NewGuid().ToString();
             var status = request.Decision == "Approve" ? "Approved" : "Hold";
 
+            // Removed manual tracking ID generation; DB handles identity keys
             await _dbConnection.ExecuteAsync(Queries.InsertApprovalRecord, new
             {
-                ApprovalId = approvalId,
                 request.LineId,
                 request.ApproverId,
                 request.ApprovedQty,
@@ -151,17 +179,15 @@ public class BinAllocationService : IBinAllocationService
 
     public async Task<bool> ProcessCancellationAsync(CancellationRequest request)
     {
-        var cancellationId = Guid.NewGuid().ToString();
+        // Removed manual tracking ID generation; DB handles identity keys
         await _dbConnection.ExecuteAsync(Queries.InsertCancellationRecord, new
         {
-            CancellationId = cancellationId,
             request.LineId,
             request.CancelledQty,
             request.Reason,
             request.CancelledBy
         });
 
-        // Update status to 'Cancelled'
         return await _dbConnection.ExecuteAsync(Queries.UpdateLineStatus, new { Status = "Cancelled", ApprovedQty = 0, request.LineId }) > 0;
     }
 

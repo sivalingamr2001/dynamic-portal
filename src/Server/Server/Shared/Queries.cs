@@ -1,4 +1,4 @@
-﻿﻿namespace Application.Shared;
+﻿namespace Application.Shared;
 
 /// <summary>
 /// Provides centralized SQL query constants used throughout the application.
@@ -116,9 +116,31 @@ public static class Queries
     /// Retrieves inventory item ID based on the Segment1 item code.
     /// </summary>
     public const string GetInventoryItemDetails = @"
-            SELECT INVENTORY_ITEM_ID AS ""InventoryItemId"", SEGMENT1 AS ""ItemCode"" 
-            FROM MTL_SYSTEM_ITEMS 
-            WHERE SEGMENT1 = :ItemCode";
+        SELECT ""InventoryItemId"", ""ItemCode"", ""Description"" FROM (
+            SELECT INVENTORY_ITEM_ID AS ""InventoryItemId"", 
+                   SEGMENT1 AS ""ItemCode"", 
+                   TRIM(REPLACE(DESCRIPTION, '""', '')) AS ""Description"",
+                   ROW_NUMBER() OVER (ORDER BY SEGMENT1) AS rn
+            FROM MTL_SYSTEM_ITEMS
+            WHERE (:Search IS NULL 
+                   OR UPPER(SEGMENT1) LIKE UPPER(:Search)
+                   OR UPPER(DESCRIPTION) LIKE UPPER(:Search))
+        ) WHERE rn > :Offset AND rn <= (:Offset + :PageSize)";
+
+    public const string GetDemandMetrics = @"
+        SELECT 
+            SUM(PEND_QTY) AS ""OaPendingQuantity"",   
+            SUM(RSV_QTY) AS ""OaRsvQty"",
+            SUM(PICKED_QTY) AS ""OaPickedQty"",
+            nvl((SELECT ROQ FROM JAN_CUSTOMER_REPLENISHMENT_T WHERE END_DATE IS NULL AND CUSTOMER_ID = A.BILL_TO_CUST_ID AND ORGANIZATION_ID = A.SHIP_FROM_ORG_ID AND INVENTORY_ITEM_ID = A.INVENTORY_ITEM_ID), 0) AS ""BinQty"",
+            nvl((SELECT SUM(RSV_QTY) FROM JAN_BRSV_TBR_V WHERE CUSTOMER_ID = A.BILL_TO_CUST_ID AND ORGANIZATION_ID = A.SHIP_FROM_ORG_ID AND INVENTORY_ITEM_ID = A.INVENTORY_ITEM_ID), 0) AS ""BinRsvQty""
+        FROM JAN_OA_BIN_DEMAND_RSV_N A
+        WHERE BILL_TO_CUST_ID = :CustomerId 
+          AND SHIP_FROM_ORG_ID = :OrganizationId 
+          AND ordered_date >= TO_DATE('01-apr-2021', 'dd-mon-yyyy') 
+          AND INVENTORY_ITEM_ID = :InventoryItemId 
+        GROUP BY BILL_TO_CUST_ID, INVENTORY_ITEM_ID, SHIP_FROM_ORG_ID";
+
 
     /// <summary>
     /// Retrieves the Sales RRS Category for a given Organization and Inventory Item.

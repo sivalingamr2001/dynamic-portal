@@ -1,12 +1,12 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Application.Interfaces;
-using Application.Models;
+using Backend.Models;
 
-namespace Server.Controllers;
+namespace Backend.Controllers;
 
 [ApiController]
-[Route("api/v1/allocations")]
+[Route("api/allocations")]
 public class BinAllocationController : ControllerBase
 {
     private readonly IBinAllocationService _allocationService;
@@ -16,6 +16,32 @@ public class BinAllocationController : ControllerBase
         _allocationService = allocationService;
     }
 
+    /// <summary>
+    /// Retrieves balance aggregates and demand references based on customer, org, and item codes.
+    /// Maps to: GET /api/allocations/demand-metrics?customerId=1&organizationId=2&inventoryItemId=3
+    /// </summary>
+    [HttpGet("demand-metrics")]
+    public async Task<IActionResult> GetDemandMetrics(
+        [FromQuery] int customerId,
+        [FromQuery] int organizationId,
+        [FromQuery] int inventoryItemId)
+    {
+        if (customerId <= 0 || organizationId <= 0 || inventoryItemId <= 0)
+        {
+            return BadRequest(new { message = "Invalid lookup query parameters supplied." });
+        }
+
+        var metrics = await _allocationService.GetDemandMetricsAsync(customerId, organizationId, inventoryItemId);
+
+        if (metrics == null)
+        {
+            // Return fallback zeros instead of error 404 to avoid breaking front-end grids
+            return Ok(new DemandMetricsDto { OaPendingQuantity = 0, OaRsvQty = 0, OaPickedQty = 0, BinQty = 0, BinRsvQty = 0 });
+        }
+
+        return Ok(metrics);
+    }
+
     [HttpGet("organizations")]
     public async Task<IActionResult> GetOrganizations()
     {
@@ -23,13 +49,17 @@ public class BinAllocationController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("items/{itemCode}")]
-    public async Task<IActionResult> GetItemDetails(string itemCode)
+    [HttpGet("items")]
+    public async Task<IActionResult> GetItemDetails(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null)
     {
-        var result = await _allocationService.GetInventoryItemDetailsAsync(itemCode);
-        if (result == null)
-            return NotFound(new { message = "Item not found." });
-            
+        var result = await _allocationService.GetInventoryItemDetailsAsync(page, pageSize, search);
+
+        if (result == null || result.Data == null)
+            return NotFound(new { message = "Item data not found." });
+
         return Ok(result);
     }
 
@@ -44,11 +74,11 @@ public class BinAllocationController : ControllerBase
     public async Task<IActionResult> CreateAllocation([FromBody] CreateAllocationRequest request)
     {
         var headerId = await _allocationService.CreateAllocationAsync(request);
-        return Created($"/api/v1/allocations/{headerId}", new { message = "Allocation created successfully", headerId });
+        return Created($"/api/allocations/{headerId}", new { message = "Allocation created successfully", headerId });
     }
 
     [HttpPut("{headerId}")]
-    public async Task<IActionResult> UpdateAllocation(string headerId, [FromBody] CreateAllocationRequest request)
+    public async Task<IActionResult> UpdateAllocation(int headerId, [FromBody] CreateAllocationRequest request)
     {
         var success = await _allocationService.UpdateAllocationAsync(headerId, request);
         if (!success) return BadRequest(new { message = "Failed to update allocation." });
